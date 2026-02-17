@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>EntryLock – Control who enter , Always !</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root {
+            --bg-main: #020617;
+            --bg-alt: #050816;
+            --accent: #38bdf8;
+            --accent-soft: rgba(56, 189, 248, 0.25);
+            --accent-strong: #22c55e;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --border-subtle: rgba(148, 163, 184, 0.25);
+            --radius-lg: 18px;
+            --radius-xl: 28px;
+            --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.85);
+            --shadow-glow: 0 0 32px rgba(56, 189, 248, 0.6);
+            --shadow-glow-strong: 0 0 45px rgba(34, 197, 94, 0.8);
+            --transition-fast: 180ms ease-out;
+            --transition-base: 260ms ease-out;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Roboto", sans-serif;
+            background: radial-gradient(circle at top, #020617 0, #000 55%);
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .page {
+            position: relative;
+            width: 100%;
+            min-height: 100vh;
+            padding: 20px clamp(18px, 4vw, 32px) 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background:
+                radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.15), transparent 55%),
+                radial-gradient(circle at 100% 20%, rgba(34, 197, 94, 0.16), transparent 55%);
+        }
+
+        .page-inner {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            z-index: 2;
+        }
+
+        .bg-orb {
+            position: fixed;
+            width: 420px;
+            height: 420px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.4), transparent 60%);
+            filter: blur(10px);
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 0;
+            animation: orb-drift 28s linear infinite alternate;
+        }
+
+        .bg-orb:nth-of-type(2) {
+            background: radial-gradient(circle, rgba(34, 197, 94, 0.45), transparent 60%);
+            animation-duration: 34s;
+            animation-direction: alternate-reverse;
+        }
+
+        @keyframes orb-drift {
+            0% {
+                transform: translate(-15%, -10%);
+            }
+            50% {
+                transform: translate(20%, 8%);
+            }
+            100% {
+                transform: translate(5%, 24%);
+            }
+        }
+
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.13;
+            z-index: 1;
+            background-image:
+                linear-gradient(rgba(15, 23, 42, 0.8) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15, 23, 42, 0.8) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: radial-gradient(circle at top, black 0, transparent 70%);
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: clamp(24px, 4vh, 32px);
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-mark {
+            width: 36px;
+            height: 36px;
+            border-radius: 14px;
+            background: radial-gradient(circle at 30% 30%, #ffffff, #38bdf8 45%, #0f172a 100%);
+            box-shadow: 0 0 18px rgba(56, 189, 248, 0.65);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #020617;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-name {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        .brand-tagline {
+            font-size: 12px;
+            color: var(--text-muted);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+        }
+
+        .nav-link {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            color: var(--text-muted);
+            position: relative;
+            padding-bottom: 4px;
+            cursor: default;
+        }
+
+        .nav-link::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 0;
+            height: 2px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+            transition: width var(--transition-fast);
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        .nav-cta {
+            border-radius: 999px;
+            padding: 7px 16px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.1), rgba(15, 23, 42, 0.9));
+            color: var(--text-main);
+        }
+
+        .nav-cta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.85);
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+            gap: clamp(36px, 6vw, 52px);
+            align-items: center;
+            margin-top: clamp(10px, 3vh, 22px);
+        }
+
+        @media (max-width: 900px) {
+            .hero {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            header {
+                gap: 14px;
+            }
+
+            nav {
+                gap: 14px;
+            }
+        }
+
+        @media (max-width: 680px) {
+            nav {
+                display: none;
+            }
+
+            header {
+                margin-bottom: 16px;
+            }
+
+            .page {
+                padding-inline: 16px;
+            }
+        }
+
+        .hero-left {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 999px;
+            padding: 5px 13px 5px 5px;
+            border: 1px solid rgba(148, 163, 184, 0.55);
+            background: radial-gradient(circle at left, rgba(56, 189, 248, 0.2), rgba(15, 23, 42, 0.95));
+            width: fit-content;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            color: var(--text-muted);
+        }
+
+        .pill-lock {
+            width: 24px;
+            height: 24px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 30% 30%, #ffffff, #22c55e 40%, #0f172a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #020617;
+            font-size: 14px;
+            box-shadow: 0 0 16px rgba(34, 197, 94, 0.7);
+        }
+
+        .hero-title {
+            line-height: 1;
+            font-weight: 800;
+            font-size: clamp(54px, 8vw, 76px);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            position: relative;
+            display: inline-flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .hero-title-main {
+            background: linear-gradient(120deg, #e5f5ff, #38bdf8 40%, #22c55e 70%, #0ea5e9 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow:
+                0 0 18px rgba(56, 189, 248, 0.7),
+                0 0 4px rgba(15, 23, 42, 0.9);
+        }
+
+        .hero-title-accent-bar {
+            width: 80px;
+            height: 3px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.7);
+        }
+
+        .hero-slogan-wrapper {
+            margin-top: 14px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+        }
+
+        .hero-slogan {
+            font-size: clamp(18px, 2.1vw, 22px);
+            font-weight: 500;
+            color: var(--text-main);
+            letter-spacing: 0.02em;
+            position: relative;
+        }
+
+        .hero-slogan span.cursor {
+            display: inline-block;
+            width: 1px;
+            height: 1.1em;
+            background: var(--accent);
+            margin-left: 3px;
+            animation: cursor-blink 900ms steps(2, start) infinite;
+        }
+
+        @keyframes cursor-blink {
+            0%, 49% {
+                opacity: 1;
+            }
+            50%, 100% {
+                opacity: 0;
+            }
+        }
+
+        .hero-subcopy {
+            margin-top: 10px;
+            max-width: 480px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+
+        .hero-subcopy strong {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .hero-cta-row {
+            margin-top: 22px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .primary-btn,
+        .ghost-btn {
+            border-radius: 999px;
+            padding: 13px 26px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            border: 1px solid transparent;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition:
+                transform var(--transition-fast),
+                box-shadow var(--transition-fast),
+                border-color var(--transition-fast),
+                background var(--transition-base),
+                color var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .primary-btn {
+            background: radial-gradient(circle at 10% 0, rgba(248, 250, 252, 0.95), rgba(248, 250, 252, 0.9));
+            color: #020617;
+            box-shadow:
+                0 16px 40px rgba(15, 23, 42, 0.85),
+                0 0 24px rgba(56, 189, 248, 0.7);
+        }
+
+        .primary-btn::before,
+        .ghost-btn::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.8), transparent 55%);
+            opacity: 0;
+            transform: translateX(-20%);
+            transition:
+                opacity var(--transition-base),
+                transform var(--transition-base);
+        }
+
+        .primary-btn span,
+        .ghost-btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow:
+                var(--shadow-soft),
+                var(--shadow-glow-strong);
+        }
+
+        .ghost-btn {
+            background: rgba(15, 23, 42, 0.9);
+            border-color: rgba(148, 163, 184, 0.8);
+            color: var(--text-main);
+            box-shadow: 0 14px 32px rgba(15, 23, 42, 0.8);
+        }
+
+        .ghost-btn:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                var(--shadow-soft),
+                var(--shadow-glow);
+            border-color: rgba(56, 189, 248, 0.8);
+        }
+
+        .primary-btn:hover::before,
+        .ghost-btn:hover::before {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .btn-icon {
+            font-size: 15px;
+        }
+
+        .hero-trust-row {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .hero-trust-row strong {
+            color: var(--accent-strong);
+            font-weight: 600;
+        }
+
+        .trust-badges {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .trust-chip {
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            padding: 5px 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+            background: rgba(15, 23, 42, 0.9);
+        }
+
+        .hero-right {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .device-shell {
+            width: min(360px, 80vw);
+            aspect-ratio: 9 / 16;
+            border-radius: 36px;
+            padding: 14px;
+            background:
+                linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 64, 175, 0.85)),
+                linear-gradient(90deg, rgba(56, 189, 248, 0.6), rgba(34, 197, 94, 0.6));
+            box-shadow:
+                0 28px 80px rgba(15, 23, 42, 0.9),
+                0 0 38px rgba(56, 189, 248, 0.7);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .device-shell::before {
+            content: "";
+            position: absolute;
+            inset: 20px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            opacity: 0.4;
+        }
+
+        .device-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 26px;
+            background:
+                radial-gradient(circle at top, rgba(56, 189, 248, 0.4), transparent 65%),
+                radial-gradient(circle at bottom, rgba(15, 23, 42, 1), #020617 65%);
+            overflow: hidden;
+            padding: 18px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .device-top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .device-top-pill {
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .device-top-pill-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 14px rgba(34, 197, 94, 0.9);
+        }
+
+        .device-main-lock {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .lock-ring-outer {
+            width: 170px;
+            height: 170px;
+            border-radius: 999px;
+            border: 1px solid rgba(56, 189, 248, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(15, 23, 42, 0.9), transparent 70%);
+            box-shadow: 0 0 32px rgba(56, 189, 248, 0.65);
+        }
+
+        .lock-ring-inner {
+            width: 130px;
+            height: 130px;
+            border-radius: 999px;
+            background: conic-gradient(
+                from 220deg,
+                rgba(56, 189, 248, 0.1),
+                rgba(56, 189, 248, 0.8),
+                rgba(34, 197, 94, 0.85),
+                rgba(56, 189, 248, 0.9),
+                rgba(56, 189, 248, 0.1)
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            animation: lock-pulse 3s ease-in-out infinite;
+        }
+
+        .lock-ring-inner::before {
+            content: "";
+            position: absolute;
+            inset: 13px;
+            border-radius: inherit;
+            background: radial-gradient(circle at 30% 30%, rgba(15, 23, 42, 1), rgba(15, 23, 42, 0.96));
+        }
+
+        .lock-icon {
+            position: relative;
+            z-index: 1;
+            width: 50px;
+            height: 60px;
+            border-radius: 18px;
+            background: linear-gradient(145deg, #22c55e, #4ade80);
+            box-shadow:
+                0 0 22px rgba(34, 197, 94, 0.95),
+                0 0 38px rgba(34, 197, 94, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #022c22;
+            font-size: 26px;
+            font-weight: 800;
+        }
+
+        @keyframes lock-pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 32px rgba(56, 189, 248, 0.65);
+            }
+            50% {
+                transform: scale(1.04);
+                box-shadow: 0 0 46px rgba(34, 197, 94, 0.85);
+            }
+        }
+
+        .device-status-label {
+            margin-top: 10px;
+            font-size: 12px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .device-status-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .device-list {
+            margin-top: 18px;
+            border-radius: var(--radius-lg);
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            padding: 10px 10px 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .device-list-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .device-list-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .device-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+        }
+
+        .device-dot.safe {
+            background: #22c55e;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+        }
+
+        .device-dot.alert {
+            background: #f97316;
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.9);
+        }
+
+        .device-list-value {
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .device-footer {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .device-footer-pill {
+            border-radius: 999px;
+            padding: 5px 10px;
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            background: rgba(15, 23, 42, 0.95);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .device-footer-pill span.key {
+            font-size: 13px;
+            color: var(--accent);
+        }
+
+        .device-floating-tag {
+            position: absolute;
+            top: 10%;
+            right: -12%;
+            border-radius: var(--radius-lg);
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(56, 189, 248, 0.6);
+            font-size: 11px;
+            color: var(--text-muted);
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            backdrop-filter: blur(16px);
+            transform: translateY(8px);
+            opacity: 0;
+        }
+
+        .device-floating-tag-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+        }
+
+        .device-floating-tag strong {
+            color: var(--accent);
+        }
+
+        .hero,
+        header {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        body.loaded header {
+            animation: fade-up 600ms var(--transition-fast) forwards;
+        }
+
+        body.loaded .hero {
+            animation: fade-up 700ms 260ms forwards;
+        }
+
+        body.loaded .device-floating-tag {
+            animation: float-tag 700ms 680ms forwards;
+        }
+
+        @keyframes fade-up {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float-tag {
+            from {
+                opacity: 0;
+                transform: translate(6px, 14px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(0, 0);
+            }
+        }
+
+        .feature-strip {
+            margin-top: clamp(36px, 6vh, 48px);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-subtle);
+            background:
+                linear-gradient(120deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.94)),
+                radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.15), transparent 60%);
+            box-shadow: var(--shadow-soft);
+            padding: 16px 18px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        .feature-strip-label {
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            color: var(--text-muted);
+        }
+
+        .feature-strip-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .feature-pill {
+            border-radius: 999px;
+            padding: 6px 10px;
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            color: var(--text-main);
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .feature-pill-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: var(--accent);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.85);
+        }
+
+        .feature-pill strong {
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        .feature-scroll {
+            margin-top: 18px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 900px) {
+            .feature-scroll {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .feature-scroll {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .feature-card {
+            border-radius: 18px;
+            padding: 14px 14px 13px;
+            background: radial-gradient(circle at top, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.96));
+            border: 1px solid rgba(148, 163, 184, 0.55);
+            color: var(--text-muted);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.9);
+            transform: translateY(4px);
+            opacity: 0;
+        }
+
+        .feature-card-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        .feature-card strong {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        body.loaded .feature-card {
+            animation: card-reveal 680ms ease-out forwards;
+        }
+
+        body.loaded .feature-card:nth-child(2) {
+            animation-delay: 160ms;
+        }
+
+        body.loaded .feature-card:nth-child(3) {
+            animation-delay: 280ms;
+        }
+
+        @keyframes card-reveal {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        footer {
+            margin-top: 28px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(15, 23, 42, 0.9);
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        footer span {
+            opacity: 0.86;
+        }
+    </style>
+</head>
+<body>
+<div class="bg-orb"></div>
+<div class="bg-orb"></div>
+<div class="grid-overlay"></div>
+
+<div class="page">
+    <div class="page-inner">
+        <header>
+            <div class="brand">
+                <div class="brand-mark">E</div>
+                <div class="brand-text">
+                    <span class="brand-name">EntryLock</span>
+                    <span class="brand-tagline">Residential Access Security</span>
+                </div>
+            </div>
+            <nav>
+                <div class="nav-link">Product</div>
+                <div class="nav-link">How it works</div>
+                <div class="nav-link">Pricing</div>
+                <button class="nav-cta">
+                    <span>
+                        <span class="badge-live-dot"></span>
+                        Live Demo
+                    </span>
+                </button>
+            </nav>
+        </header>
+
+        <main class="hero">
+            <section class="hero-left">
+                <div class="hero-kicker">
+                    <div class="pill-lock">🔒</div>
+                    <span>Smart entry for modern homes</span>
+                </div>
+
+                <h1 class="hero-title">
+                    <span class="hero-title-main">ENTRYLOCK</span>
+                    <span class="hero-title-accent-bar"></span>
+                </h1>
+
+                <div class="hero-slogan-wrapper">
+                    <p class="hero-slogan" id="hero-slogan">
+                        <span class="cursor"></span>
+                    </p>
+                </div>
+
+                <p class="hero-subcopy">
+                    Take instant control over every door, every guest, every moment.
+                    EntryLock turns your front door into a
+                    <strong>trusted digital checkpoint</strong> from anywhere in the world.
+                </p>
+
+                <div class="hero-cta-row">
+                    <button class="primary-btn" id="btn-get-started">
+                        <span>Get Started</span>
+                        <span class="btn-icon">→</span>
+                    </button>
+                    <button class="ghost-btn" id="btn-secure-home">
+                        <span>Secure Your Home</span>
+                        <span class="btn-icon">⚡</span>
+                    </button>
+                </div>
+
+                <div class="hero-trust-row">
+                    <span>Trusted to protect <strong>2.8K+</strong> smart homes.</span>
+                    <div class="trust-badges">
+                        <div class="trust-chip">Encrypted access logs</div>
+                        <div class="trust-chip">Real time alerts</div>
+                        <div class="trust-chip">Family and guests control</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="hero-right">
+                <div class="device-shell">
+                    <div class="device-inner">
+                        <div class="device-top-bar">
+                            <div class="device-top-pill">
+                                <span class="device-top-pill-dot"></span>
+                                <span>EntryLock Home</span>
+                            </div>
+                            <span>Tonight 21:34</span>
+                        </div>
+
+                        <div class="device-main-lock">
+                            <div class="lock-ring-outer">
+                                <div class="lock-ring-inner">
+                                    <div class="lock-icon">🔐</div>
+                                </div>
+                            </div>
+                            <div class="device-status-label">Door secured</div>
+                            <div class="device-status-sub">Only approved guests can unlock this entry.</div>
+                        </div>
+
+                        <div class="device-list">
+                            <div class="device-list-row">
+                                <div class="device-list-label">
+                                    <span class="device-dot safe"></span>
+                                    <span>Front Door Last opened</span>
+                                </div>
+                                <span class="device-list-value">2 min ago</span>
+                            </div>
+                            <div class="device-list-row">
+                                <div class="device-list-label">
+                                    <span class="device-dot safe"></span>
+                                    <span>Entry Code Guests</span>
+                                </div>
+                                <span class="device-list-value">Active 3</span>
+                            </div>
+                            <div class="device-list-row">
+                                <div class="device-list-label">
+                                    <span class="device-dot alert"></span>
+                                    <span>Unknown attempt</span>
+                                </div>
+                                <span class="device-list-value">Blocked</span>
+                            </div>
+                        </div>
+
+                        <div class="device-footer">
+                            <div class="device-footer-pill">
+                                <span class="key">◉</span>
+                                <span>Live activity stream</span>
+                            </div>
+                            <span>End to end encrypted</span>
+                        </div>
+                    </div>
+
+                    <div class="device-floating-tag">
+                        <span class="device-floating-tag-dot"></span>
+                        <span>Control who enter , <strong>Always !</strong></span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <section class="feature-strip">
+            <div class="feature-strip-label">Why homeowners choose EntryLock</div>
+            <div class="feature-strip-items">
+                <div class="feature-pill">
+                    <span class="feature-pill-dot"></span>
+                    <span><strong>Granular access</strong> for family, guests, and services</span>
+                </div>
+                <div class="feature-pill">
+                    <span class="feature-pill-dot"></span>
+                    <span><strong>Instant alerts</strong> for every lock and unlock event</span>
+                </div>
+                <div class="feature-pill">
+                    <span class="feature-pill-dot"></span>
+                    <span><strong>Offline fail safe</strong> for power and network outages</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="feature-scroll">
+            <article class="feature-card">
+                <div class="feature-card-title">Real time control</div>
+                <p>
+                    Lock and unlock your door from anywhere in the world. Share
+                    temporary access links with guests and revoke them instantly.
+                </p>
+            </article>
+            <article class="feature-card">
+                <div class="feature-card-title">Security first</div>
+                <p>
+                    Hardware grade encryption, tamper detection, and a complete audit
+                    history of <strong>who entered</strong>, when, and how.
+                </p>
+            </article>
+            <article class="feature-card">
+                <div class="feature-card-title">Designed for homes</div>
+                <p>
+                    Built for families, apartments, and vacation rentals with
+                    profiles tailor made for <strong>owners, kids, and guests</strong>.
+                </p>
+            </article>
+        </section>
+
+        <footer>
+            <span>© <span id="year"></span> EntryLock Inc. All rights reserved.</span>
+            <span>Built for trust, safety, and total access control.</span>
+        </footer>
+    </div>
+</div>
+
+<script>
+    const sloganElement = document.getElementById("hero-slogan");
+    const sloganText = "Control who enter , Always !";
+    const cursor = sloganElement.querySelector(".cursor");
+    let index = 0;
+
+    function typeSlogan() {
+        if (!sloganElement) return;
+        const visibleText = sloganText.slice(0, index);
+        if (sloganElement.childNodes[0]) {
+            sloganElement.removeChild(sloganElement.childNodes[0]);
+        }
+        sloganElement.insertBefore(document.createTextNode(visibleText), cursor);
+
+        if (index < sloganText.length) {
+            index += 1;
+            const baseDelay = 55;
+            const extra = sloganText[index - 1] === " " ? 50 : 0;
+            setTimeout(typeSlogan, baseDelay + extra);
+        }
+    }
+
+    function initYear() {
+        const yearSpan = document.getElementById("year");
+        if (yearSpan) yearSpan.textContent = new Date().getFullYear().toString();
+    }
+
+    function attachCtaHandlers() {
+        const getStarted = document.getElementById("btn-get-started");
+        const secureHome = document.getElementById("btn-secure-home");
+
+        function pulse(button) {
+            if (!button) return;
+            button.style.transform = "translateY(-2px) scale(1.03)";
+            button.style.boxShadow = "0 0 40px rgba(56,189,248,0.85)";
+            setTimeout(() => {
+                button.style.transform = "";
+                button.style.boxShadow = "";
+            }, 220);
+        }
+
+        if (getStarted) {
+            getStarted.addEventListener("click", () => {
+                pulse(getStarted);
+            });
+        }
+
+        if (secureHome) {
+            secureHome.addEventListener("click", () => {
+                pulse(secureHome);
+            });
+        }
+    }
+
+    window.addEventListener("load", () => {
+        document.body.classList.add("loaded");
+        initYear();
+        attachCtaHandlers();
+        setTimeout(typeSlogan, 280);
+    });
+</script>
+</body>
+</html>
